@@ -26,11 +26,14 @@
     analyser.connect(audioCtx.destination)
 
     // create the canvas and image data
-    canvas.width = freqData.length/4
+    canvas.width = freqData.length
     canvas.height = window.innerHeight
 
     const ctx = canvas.getContext('2d')
-    const image_data = ctx.createImageData(freqData.length / 4, canvas.height)
+    const image_data = ctx.createImageData(freqData.length, canvas.height)
+
+    // access image data at same stride as fft
+    const image_data_32 = new Uint32Array(image_data.data.buffer)
 
 
     let idx = 0
@@ -38,8 +41,31 @@
       requestAnimationFrame(render)
       analyser.getByteFrequencyData(freqData)
 
-      // write directly into the image data
-      image_data.data.set(freqData, freqData.length * idx)
+      const PI74 = Math.PI * 1.75
+
+      const offset = freqData.length * idx
+      for (var i = 0; i < freqData.length; i++) {
+
+        const v = freqData[i]/255
+
+        let r = (-Math.sin(v * PI74) * 255)
+        let g = ( Math.sin(v * PI74) * 255)
+        let b = (-Math.cos(v * PI74) * 255)
+
+        if(r < 0) r = 0
+        if(g < 0) g = 0
+        if(b < 0) b = 0
+
+        r &= 255
+        g &= 255
+        b &= 255
+
+        r = 255-r
+        g = 255-g
+        b = 255-b
+
+        image_data_32[i + offset] = r  | (g << 8) | (b << 16) | 0xff000000
+      }
 
       ctx.putImageData(image_data, 0, 0)
 
