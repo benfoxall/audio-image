@@ -26,26 +26,106 @@
     analyser.connect(audioCtx.destination)
 
     // create the canvas and image data
-    canvas.width = freqData.length/4
+    canvas.width = window.innerWidth
     canvas.height = window.innerHeight
 
-    const ctx = canvas.getContext('2d')
-    const image_data = ctx.createImageData(freqData.length / 4, canvas.height)
 
+    const gl = canvas.getContext('webgl')
+
+    const frag = gl.createShader(gl.FRAGMENT_SHADER)
+    gl.shaderSource(frag, `
+      precision mediump float;
+      varying vec3 v_color;
+
+       void main() {
+         gl_FragColor = vec4(v_color, 1.0);
+       }
+    `)
+    gl.compileShader(frag)
+
+    const vert = gl.createShader(gl.VERTEX_SHADER)
+    gl.shaderSource(vert, `
+      attribute float a_value;
+      attribute vec2 a_position;
+      varying vec3 v_color;
+
+      float P = 5.497787143;
+
+      void main() {
+
+        float r = -sin(a_value * P);
+        float g =  sin(a_value * P);
+        float b = -cos(a_value * P);
+
+        r = 1.0 - r;
+        g = 1.0 - g;
+        b = 1.0 - b;
+
+        v_color = vec3(r,g,b);
+
+        gl_Position = vec4(a_position, 0.0, 1.0);
+
+        gl_PointSize = 2.0;
+      }
+    `)
+    gl.compileShader(vert)
+
+    const program = gl.createProgram()
+    gl.attachShader(program, vert)
+    gl.attachShader(program, frag)
+    gl.linkProgram(program)
+
+    const a_value = gl.getAttribLocation(program, 'a_value')
+    const a_position = gl.getAttribLocation(program, 'a_position')
+    gl.useProgram(program)
+
+
+
+    const w = freqData.length/ 4
+    const h = 600
+
+    const positions = new Float32Array(w * 2 * h)
+
+    for (var x = 0; x < w; x++) {
+      for (var y = 0; y < h; y++) {
+        let idx = ((y * w) + x) * 2
+        positions[idx]   = ((x/w)-.5) * 2
+        positions[idx+1] = ((y/h)-.5) * -2;
+      }
+    }
+
+
+    const pos_buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, pos_buffer)
+    gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW)
+    gl.vertexAttribPointer(a_position, 2, gl.FLOAT, true, 8, 0)
+    gl.enableVertexAttribArray(a_position)
+
+
+    const buffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+    gl.bufferData(gl.ARRAY_BUFFER, w * h, gl.DYNAMIC_DRAW);
+    gl.vertexAttribPointer(a_value, 1, gl.BYTE, true, 1, 0)
+    gl.enableVertexAttribArray(a_value)
+
+    gl.drawArrays(gl.POINTS, 0, freqData.length)
 
     let idx = 0
     const render = () => {
       requestAnimationFrame(render)
+
       analyser.getByteFrequencyData(freqData)
 
-      // write directly into the image data
-      image_data.data.set(freqData, freqData.length * idx)
+      gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
+      gl.bufferSubData(gl.ARRAY_BUFFER, idx * w, freqData, w);
 
-      ctx.putImageData(image_data, 0, 0)
+      gl.drawArrays(gl.POINTS, 0, w * h)
 
-      idx = (idx + 1) % canvas.height
+      idx = (idx + 1) % h
     }
     requestAnimationFrame(render)
+
+    audio.play()
 
   </script>
 </body>
