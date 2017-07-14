@@ -49,23 +49,19 @@
       attribute vec2 a_position;
       varying vec3 v_color;
 
-      float P = 5.497787143;
+      float P = 5.5; 
 
       void main() {
 
-        float r = -sin(a_value * P);
-        float g =  sin(a_value * P);
-        float b = -cos(a_value * P);
-
-        r = 1.0 - r;
-        g = 1.0 - g;
-        b = 1.0 - b;
+        float r = 1.0 + sin(a_value * P);
+        float g = 1.0 - sin(a_value * P);
+        float b = 1.0 + cos(a_value * P);
 
         v_color = vec3(r,g,b);
 
         gl_Position = vec4(a_position, 0.0, 1.0);
 
-        gl_PointSize = 2.0;
+        gl_PointSize = 1.5;
       }
     `)
     gl.compileShader(vert)
@@ -80,9 +76,8 @@
     gl.useProgram(program)
 
 
-
-    const w = freqData.length/ 4
-    const h = 600
+    const w = freqData.length
+    const h = window.innerHeight
 
     const positions = new Float32Array(w * 2 * h)
 
